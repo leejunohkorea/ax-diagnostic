@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AX 조직전환 진단</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    :root{
+      --bg:#f4f7fb; --card:#fff; --text:#14213b; --muted:#6b778c;
+      --line:#e4e9f0; --blue:#0f75ff; --blue2:#075cc8; --soft:#edf5ff;
+      --red:#e5484d; --green:#0f9f6e; --shadow:0 12px 32px rgba(24,46,82,.08);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;background:var(--bg);color:var(--text);
+      font-family:Pretendard,"Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      line-height:1.55
+    }
+    .wrap{width:min(1180px,calc(100% - 28px));margin:auto;padding:28px 0 60px}
+    .hidden{display:none!important}
+
+    /* 공통 헤더 */
+    .top{
+      background:linear-gradient(135deg,#0d62df,#2f88ff);
+      color:#fff;padding:28px;border-radius:24px;box-shadow:var(--shadow);
+      display:flex;justify-content:space-between;gap:20px;align-items:flex-start
+    }
+    .eyebrow{font-size:12px;font-weight:900;opacity:.78;letter-spacing:.08em}
+    .top h1{margin:5px 0 0;font-size:clamp(28px,5vw,40px);line-height:1.16}
+    .top p{margin:10px 0 0;opacity:.9;font-size:14px;max-width:760px}
+    .top-actions{display:flex;gap:8px;flex-wrap:wrap}
+    button,.btn{
+      border:0;border-radius:11px;padding:11px 14px;font-weight:850;cursor:pointer;
+      font-size:13px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center
+    }
+    .btn-white{background:#fff;color:#125fc5}
+    .btn-ghost{background:rgba(255,255,255,.13);color:#fff;border:1px solid rgba(255,255,255,.25)}
+    .btn-dark{background:#17243d;color:#fff}
+    .btn-blue{background:var(--blue);color:#fff}
+
+    /* 참여자 */
+    .card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow)}
+    .meta{padding:22px;margin-top:18px}
+    .meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .field label{display:block;font-size:12px;font-weight:850;margin-bottom:6px}
+    .field input,.field select{
+      width:100%;padding:11px 12px;border:1px solid var(--line);
+      border-radius:10px;outline:none;background:#fff;font-size:14px
+    }
+    .field input:focus,.field select:focus{
+      border-color:var(--blue);box-shadow:0 0 0 3px rgba(15,117,255,.08)
+    }
+    .guide{
+      margin-top:15px;padding:12px 13px;background:#f8fafc;border:1px solid var(--line);
+      border-radius:11px;color:var(--muted);font-size:12px
+    }
+    .guide strong{color:var(--text)}
+    .respondent-code{
+      margin-top:10px;font-size:12px;color:var(--muted)
+    }
+    .respondent-code strong{color:var(--blue2)}
+
+    .progress-wrap{
+      position:sticky;top:0;z-index:20;background:rgba(244,247,251,.94);
+      backdrop-filter:blur(8px);padding:9px 0 12px;margin-top:8px
+    }
+    .progress-head{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px}
+    .progress-bar{height:8px;background:#e5eaf1;border-radius:999px;overflow:hidden}
+    .progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--blue),#70adff);transition:.2s}
+
+    .section{
+      background:#fff;border:1px solid transparent;border-radius:var(--radius);
+      box-shadow:var(--shadow);padding:24px;margin:16px 0
+    }
+    .section.error{border-color:#ffcfd1;box-shadow:0 0 0 3px rgba(229,72,77,.05)}
+    .section-head{display:flex;gap:13px;align-items:flex-start;margin-bottom:10px}
+    .num{
+      width:42px;height:42px;flex:0 0 42px;border-radius:13px;display:grid;place-items:center;
+      background:var(--soft);color:var(--blue2);font-weight:900
+    }
+    .section h2{margin:0;font-size:20px}
+    .eng{font-size:11px;color:#7c8799;font-weight:700;margin-left:5px}
+    .desc{margin:4px 0 0;font-size:12px;color:var(--muted)}
+
+    .question{padding:18px 0;border-top:1px solid var(--line)}
+    .question:first-of-type{border-top:0}
+    .q-title{display:flex;gap:8px;align-items:flex-start;font-weight:750;margin-bottom:12px}
+    .q-no{min-width:32px;color:var(--blue);font-weight:900}
+    .likert{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;width:100%}
+    .option{min-width:0}
+    .option input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+    .option label{
+      width:100%;min-height:68px;border:1px solid var(--line);border-radius:12px;background:#fff;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      cursor:pointer;text-align:center;padding:8px 6px;font-size:12px;color:#4e5c72;
+      transition:.16s ease;user-select:none
+    }
+    .option label:hover{border-color:#b9d5ff;background:#f7fbff}
+    .option .score{font-size:17px;font-weight:950;line-height:1.15;color:#16243c;margin-bottom:4px}
+    .option input:checked + label{
+      background:var(--blue);border-color:var(--blue);color:#fff;
+      box-shadow:0 7px 16px rgba(15,117,255,.18)
+    }
+    .option input:checked + label .score{color:#fff}
+
+    .action{
+      background:#10203e;color:#fff;border-radius:22px;padding:25px;margin-top:20px;text-align:center
+    }
+    .action h3{margin:0 0 6px}.action p{margin:0 0 15px;font-size:13px;opacity:.78}
+    #submitBtn{background:#fff;color:#10203e;min-width:220px}
+    #submitBtn:disabled{opacity:.55;cursor:not-allowed}
+    .notice{display:none;margin-top:13px;padding:11px 13px;border-radius:11px;font-size:13px;text-align:left}
+    .notice.show{display:block}.notice.ok{background:#123a2f;color:#d5f8ea}.notice.error{background:#3d1920;color:#ffdde0}
+
+    #result{display:none;margin-top:24px}
+    #result.show{display:block}
+    .result-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:18px}
+    .result-card{padding:22px}
+    .result-card h3{margin:0 0 14px}
+    .overall{display:flex;align-items:end;gap:8px}
+    .overall .score{font-size:58px;line-height:1;font-weight:950;color:var(--blue)}
+    .unit{color:var(--muted);padding-bottom:7px}
+    .badge{display:inline-block;margin-top:10px;background:var(--soft);color:var(--blue2);border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900}
+    .insight{margin-top:14px;padding:14px;border:1px solid var(--line);background:#f8fafc;border-radius:13px;font-size:14px}
+    .insight strong{color:var(--blue2)}
+    .bars{margin-top:5px}
+    .bar-row{margin:13px 0}
+    .bar-head{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+    .track{height:9px;background:#edf1f6;border-radius:999px;overflow:hidden}
+    .track div{height:100%;background:linear-gradient(90deg,var(--blue),#67a7ff)}
+    .foot{margin-top:13px;color:var(--muted);font-size:11px}
+    canvas{max-height:340px}
+
+    /* 비밀번호 모달 */
+    .modal{
+      position:fixed;inset:0;background:rgba(10,18,32,.5);display:none;
+      align-items:center;justify-content:center;padding:18px;z-index:50
+    }
+    .modal.show{display:flex}
+    .modal-card{
+      background:#fff;width:min(430px,100%);border-radius:20px;padding:24px;
+      box-shadow:0 22px 70px rgba(0,0,0,.22)
+    }
+    .modal-card h2{margin:0 0 6px}
+    .modal-card p{margin:0 0 16px;font-size:13px;color:var(--muted)}
+    .modal-actions{display:flex;gap:8px;margin-top:12px}
+    .modal-actions button{flex:1}
+    .pw-status{margin-top:10px;font-size:12px;color:var(--red);min-height:18px}
+
+    /* 관리자 */
+    .admin-panel{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-top:18px}
+    .filters{display:grid;grid-template-columns:1.3fr 1.1fr 1fr auto;gap:10px;align-items:end}
+    .filters button{height:41px}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
+    .kpi{background:#fff;border-radius:16px;box-shadow:var(--shadow);padding:19px}
+    .kpi .label{font-size:12px;color:var(--muted);font-weight:800}
+    .kpi .value{font-size:30px;font-weight:950;margin-top:4px}
+    .kpi .sub{font-size:11px;color:var(--muted);margin-top:3px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+    .admin-panel h3{margin:0 0 14px;font-size:17px}
+    .table-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
+    table{width:100%;border-collapse:collapse;min-width:920px}
+    th,td{padding:11px 12px;border-bottom:1px solid var(--line);font-size:12px;text-align:left;white-space:nowrap}
+    th{background:#f7f9fc;color:#586579;position:sticky;top:0}
+    tbody tr{cursor:pointer}
+    tbody tr:hover{background:#f8fbff}
+    .score-pill{display:inline-block;background:var(--soft);color:var(--blue2);font-weight:900;padding:5px 8px;border-radius:999px}
+    .empty{padding:26px;text-align:center;color:var(--muted)}
+    .admin-info{
+      margin-top:18px;padding:12px 14px;background:#fff8e6;border:1px solid #f2db97;
+      color:#6d5818;border-radius:11px;font-size:12px
+    }
+
+    /* 개인 상세 */
+    .detail-modal .modal-card{width:min(900px,100%);max-height:88vh;overflow:auto}
+    .modal-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .close{background:#eef2f7;color:#33415a;width:36px;height:36px;padding:0}
+    .detail-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}
+    .detail-meta div{background:#f8fafc;border:1px solid var(--line);border-radius:11px;padding:10px}
+    .detail-meta small{display:block;color:var(--muted);margin-bottom:3px}
+    .detail-meta strong{font-size:13px}
+    .detail-scores{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+    .detail-scores div{border:1px solid var(--line);border-radius:11px;padding:11px}
+    .detail-scores span{display:block;font-size:11px;color:var(--muted)}
+    .detail-scores strong{font-size:20px}
+    .answers{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+    .answers div{border:1px solid var(--line);border-radius:9px;padding:9px;font-size:12px;display:flex;justify-content:space-between}
+
+    @media(max-width:900px){
+      .top{display:block}
+      .top-actions{margin-top:14px}
+      .meta-grid,.result-grid,.filters,.kpis,.grid2,.detail-meta,.detail-scores,.answers{grid-template-columns:1fr}
+      .likert{grid-template-columns:1fr}
+      .option label{min-height:48px;flex-direction:row;justify-content:flex-start;gap:10px;text-align:left;padding:10px 12px}
+      .option .score{min-width:20px;margin:0}
+      .wrap{width:min(100% - 18px,1180px)}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ==================== 참여자 화면 ==================== -->
+<div id="participantView" class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">AX ORGANIZATION TRANSFORMATION DIAGNOSTIC</div>
+      <h1>AX 조직전환 진단</h1>
+      <p>AI를 얼마나 많이 쓰는지가 아니라, AI가 조직의 전략·업무·성과·사람·문화에 실제로 얼마나 연결되고 있는지를 확인합니다.</p>
+    </div>
+    <div class="top-actions">
+      <button id="openAdminBtn" class="btn-white">관리자 모드</button>
+    </div>
+  </header>
+
+  <section class="meta card">
+    <div class="meta-grid">
+      <div class="field">
+        <label for="organization">기관/기업명</label>
+        <input id="organization" placeholder="예: 굿인사이트">
+      </div>
+      <div class="field">
+        <label for="session">교육/진단 회차</label>
+        <input id="session" placeholder="예: 2026_AX_01">
+      </div>
+      <div class="field">
+        <label for="position">직급/역할</label>
+        <select id="position">
+          <option value="">선택</option>
+          <option>경영진/임원</option>
+          <option>부서장/팀장</option>
+          <option>중간관리자</option>
+          <option>실무자</option>
+          <option>기타</option>
+        </select>
+      </div>
+    </div>
+    <div class="guide">
+      <strong>응답 기준:</strong> 1점 전혀 그렇지 않다 · 2점 그렇지 않다 · 3점 보통이다 · 4점 그렇다 · 5점 매우 그렇다
+    </div>
+    <div class="respondent-code">응답 코드: <strong id="respondentCode">-</strong></div>
+  </section>
+
+  <div class="progress-wrap">
+    <div class="progress-head"><span>응답 진행률</span><strong id="progressText">0 / 24</strong></div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+
+  <form id="surveyForm"></form>
+
+  <section class="action">
+    <h3>24개 문항에 모두 응답해 주세요.</h3>
+    <p>응답 후 개인의 AX 전환 인식 결과를 바로 확인할 수 있습니다.</p>
+    <button type="button" id="submitBtn">진단 결과 확인</button>
+    <div id="notice" class="notice"></div>
+  </section>
+
+  <section id="result">
+    <div class="result-grid">
+      <div class="result-card card">
+        <h3>나의 AX 전환 인식 결과</h3>
+        <div class="overall"><div class="score" id="overallScore">0</div><div class="unit">/ 100점</div></div>
+        <div class="badge" id="levelBadge"></div>
+        <div class="insight" id="summaryInsight"></div>
+        <div class="foot">※ 교육·내부 비교용 참고 진단입니다. 표준화된 심리검사나 공식 규준을 의미하지 않습니다.</div>
+      </div>
+      <div class="result-card card">
+        <h3>6개 영역 레이더</h3>
+        <canvas id="radarChart"></canvas>
+      </div>
+    </div>
+    <div class="result-card card" style="margin-top:18px">
+      <h3>영역별 점수</h3>
+      <div class="bars" id="scoreBars"></div>
+      <div class="insight" id="bottleneckInsight"></div>
+    </div>
+  </section>
+</div>
+
+<!-- ==================== 관리자 화면 ==================== -->
+<div id="adminView" class="wrap hidden">
+  <header class="top">
+    <div>
+      <div class="eyebrow">AX DIAGNOSTIC ADMIN</div>
+      <h1>AX 조직전환 진단 관리자</h1>
+      <p>전체 응답자 · 집단 평균 · 영역별 병목 · 개인 상세 결과를 확인합니다.</p>
+    </div>
+    <div class="top-actions">
+      <button id="backToSurveyBtn" class="btn-ghost">진단 페이지로</button>
+      <button id="refreshBtn" class="btn-white">새로고침</button>
+      <button id="exportBtn" class="btn-white">CSV 내보내기</button>
+    </div>
+  </header>
+
+  <div id="adminConnectionInfo" class="admin-info">
+    Firebase가 연결되면 전체 응답 데이터가 여기에 표시됩니다.
+  </div>
+
+  <section class="admin-panel">
+    <div class="filters">
+      <div class="field"><label>기관/기업</label><select id="orgFilter"><option value="">전체</option></select></div>
+      <div class="field"><label>교육/진단 회차</label><select id="sessionFilter"><option value="">전체</option></select></div>
+      <div class="field"><label>직급/역할</label><select id="positionFilter"><option value="">전체</option></select></div>
+      <button id="clearFilterBtn" class="btn-dark">필터 초기화</button>
+    </div>
+  </section>
+
+  <section class="kpis">
+    <div class="kpi"><div class="label">응답자 수</div><div class="value" id="kpiCount">0</div><div class="sub">현재 필터 기준</div></div>
+    <div class="kpi"><div class="label">종합 평균</div><div class="value" id="kpiOverall">0</div><div class="sub">100점 환산</div></div>
+    <div class="kpi"><div class="label">가장 높은 영역</div><div class="value" style="font-size:20px" id="kpiHigh">-</div><div class="sub" id="kpiHighSub">-</div></div>
+    <div class="kpi"><div class="label">현재 병목 영역</div><div class="value" style="font-size:20px" id="kpiLow">-</div><div class="sub" id="kpiLowSub">-</div></div>
+  </section>
+
+  <section class="grid2">
+    <div class="admin-panel">
+      <h3>조직 평균 레이더</h3>
+      <canvas id="adminRadarChart"></canvas>
+    </div>
+    <div class="admin-panel">
+      <h3>영역별 평균</h3>
+      <div id="avgBars" class="bars"></div>
+    </div>
+  </section>
+
+  <section class="admin-panel">
+    <div class="table-head">
+      <div>
+        <h3 style="margin:0">전체 응답자</h3>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">행을 클릭하면 개인 상세 결과를 확인할 수 있습니다.</div>
+      </div>
+      <div id="tableCount" style="font-size:12px;color:var(--muted)"></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>응답코드</th><th>기관/기업</th><th>회차</th><th>직급/역할</th>
+            <th>종합</th><th>전략</th><th>AI활용</th><th>업무재설계</th><th>성과전환</th>
+            <th>사람·역량</th><th>문화·거버넌스</th><th>제출일시</th>
+          </tr>
+        </thead>
+        <tbody id="responseBody"></tbody>
+      </table>
+    </div>
+    <div id="emptyState" class="empty hidden">조건에 해당하는 응답이 없습니다.</div>
+  </section>
+</div>
+
+<!-- 관리자 비밀번호 -->
+<div id="passwordModal" class="modal">
+  <div class="modal-card">
+    <h2>관리자 모드</h2>
+    <p>관리자 비밀번호를 입력하세요.</p>
+    <div class="field">
+      <label>비밀번호</label>
+      <input id="adminPassword" type="password" inputmode="numeric" placeholder="비밀번호 입력">
+    </div>
+    <div class="modal-actions">
+      <button id="cancelAdminBtn" class="btn-dark">취소</button>
+      <button id="enterAdminBtn" class="btn-blue">관리자 페이지 열기</button>
+    </div>
+    <div id="pwStatus" class="pw-status"></div>
+  </div>
+</div>
+
+<!-- 개인 상세 -->
+<div id="detailModal" class="modal detail-modal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <h2 style="margin:0">개인 상세 결과</h2>
+        <div id="detailCode" style="color:var(--muted);font-size:12px;margin-top:4px"></div>
+      </div>
+      <button id="closeDetailBtn" class="close">×</button>
+    </div>
+    <div id="detailMeta" class="detail-meta"></div>
+    <div id="detailScores" class="detail-scores"></div>
+    <h3 style="font-size:15px;margin-top:18px">24개 문항 응답</h3>
+    <div id="detailAnswers" class="answers"></div>
+  </div>
+</div>
+
+<script type="module">
+  /* =========================================================
+     기본 설정
+  ========================================================== */
+  const ADMIN_PASSWORD = "1004";
+
+  /* Firebase를 연결할 때 true로 변경 */
+  const FIREBASE_ENABLED = false;
+
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  let db=null, addDocFn=null, collectionFn=null, serverTimestampFn=null,
+      getDocsFn=null, queryFn=null, orderByFn=null;
+
+  let participantChart=null, adminChart=null;
+  let allRows=[], filtered=[];
+
+  const $ = id => document.getElementById(id);
+
+  /* =========================================================
+     Firebase 초기화
+  ========================================================== */
+  async function initFirebase(){
+    if(!FIREBASE_ENABLED) return false;
+    if(db) return true;
+
+    try{
+      const appMod = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js");
+      const fsMod = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js");
+
+      const app = appMod.initializeApp(firebaseConfig);
+      db = fsMod.getFirestore(app);
+
+      addDocFn = fsMod.addDoc;
+      collectionFn = fsMod.collection;
+      serverTimestampFn = fsMod.serverTimestamp;
+      getDocsFn = fsMod.getDocs;
+      queryFn = fsMod.query;
+      orderByFn = fsMod.orderBy;
+
+      return true;
+    }catch(e){
+      console.error("Firebase 초기화 실패:", e);
+      return false;
+    }
+  }
+
+  await initFirebase();
+
+  /* =========================================================
+     진단 문항
+  ========================================================== */
+  const categories = [
+    {
+      key:"strategy", title:"전략적 방향성", eng:"Strategy & Direction",
+      desc:"AI를 왜 도입하고 어디에 적용해야 하는지가 조직의 목표·전략과 연결되어 있는지 확인합니다.",
+      items:[
+        "우리 조직은 AI 도입을 통해 해결하고자 하는 업무상의 문제와 목표가 명확하다.",
+        "우리 조직은 어떤 업무에 AI를 우선적으로 적용해야 하는지 우선순위가 정해져 있다.",
+        "리더는 AI가 우리 조직의 업무와 직무에 가져올 변화를 이해하고 있다.",
+        "AI 도입이 단순한 도구 사용을 넘어 조직의 성과 및 전략과 연결되어 있다."
+      ]
+    },
+    {
+      key:"adoption", title:"AI 활용 수준", eng:"AI Adoption & Utilization",
+      desc:"AI가 일부 개인의 실험을 넘어 실제 업무에 얼마나 활용·확산되고 있는지 확인합니다.",
+      items:[
+        "구성원들은 자신의 업무에서 AI를 활용할 수 있는 영역을 알고 있다.",
+        "AI가 자료조사·분석·문서작성·아이디어 도출 등 실제 업무에 활용되고 있다.",
+        "AI 활용이 일부 개인의 역량에 의존하지 않고 조직 내에서 확산되고 있다.",
+        "구성원들이 업무 목적에 따라 적절한 AI 도구와 활용방법을 선택할 수 있다."
+      ]
+    },
+    {
+      key:"redesign", title:"업무 재설계", eng:"Work Redesign",
+      desc:"AI 도입 이후 기존 업무 방식·역할·프로세스가 실제로 재설계되고 있는지 확인합니다.",
+      items:[
+        "AI 도입 이후 기존 업무 절차나 수행방식을 재검토하고 있다.",
+        "사람이 해야 할 업무와 AI에 맡길 수 있는 업무를 구분하고 있다.",
+        "AI로 절감된 시간이나 업무량을 더 가치 있는 업무에 재배치하고 있다.",
+        "AI를 활용하여 불필요하거나 반복적인 업무를 제거·축소·자동화하고 있다."
+      ]
+    },
+    {
+      key:"performance", title:"성과 전환", eng:"Performance Transformation",
+      desc:"AI 활용이 시간·품질·집중도·성과 측정으로 이어지는지 확인합니다.",
+      items:[
+        "AI 활용으로 업무 처리시간이 실질적으로 단축되고 있다.",
+        "AI 활용으로 업무 결과물의 품질이나 정확성이 향상되고 있다.",
+        "AI 활용으로 구성원들이 보다 중요한 업무에 집중할 수 있게 되었다.",
+        "AI 도입의 효과를 시간·비용·품질·성과 등의 지표로 확인하고 있다."
+      ]
+    },
+    {
+      key:"people", title:"사람·역량 전환", eng:"People & Capability",
+      desc:"AI 활용 확대와 함께 구성원의 역할·역량·학습체계가 변화하고 있는지 확인합니다.",
+      items:[
+        "구성원에게 직무에 필요한 AI 활용 교육과 학습기회가 제공되고 있다.",
+        "구성원들은 AI를 자신의 업무를 위협하는 존재보다 업무를 지원하는 도구로 받아들이고 있다.",
+        "AI 활용 확대와 함께 판단력·문제해결·소통·창의성 등 인간 고유 역량도 중요하게 다루고 있다.",
+        "AI로 변화하는 업무에 맞춰 구성원의 역할과 필요한 역량을 재정의하고 있다."
+      ]
+    },
+    {
+      key:"culture", title:"문화·거버넌스", eng:"Culture & Governance",
+      desc:"AI 활용이 개인적 시도를 넘어 공유·실험·보안·책임 원칙으로 정착하고 있는지 확인합니다.",
+      items:[
+        "구성원들이 효과적인 AI 활용방법이나 사례를 서로 공유하고 있다.",
+        "구성원들이 실패를 지나치게 두려워하지 않고 새로운 AI 활용방법을 실험할 수 있다.",
+        "우리 조직에는 AI 사용 시 지켜야 할 보안·개인정보·검증·책임 기준이 명확하다.",
+        "AI를 활용해 만든 결과물도 사람이 검토하고 최종적으로 책임져야 한다는 원칙이 공유되어 있다."
+      ]
+    }
+  ];
+
+  const catPairs = categories.map(c => [c.key,c.title]);
+  const scaleLabels = ["전혀 그렇지 않다","그렇지 않다","보통이다","그렇다","매우 그렇다"];
+  const total = 24;
+
+  /* =========================================================
+     응답 코드
+  ========================================================== */
+  function makeCode(){
+    const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const arr=new Uint32Array(6);
+    crypto.getRandomValues(arr);
+    let s="AX-";
+    for(let i=0;i<6;i++) s += chars[arr[i] % chars.length];
+    return s;
+  }
+
+  const respondentCode = makeCode();
+  $("respondentCode").textContent = respondentCode;
+
+  /* =========================================================
+     문항 생성
+  ========================================================== */
+  const form = $("surveyForm");
+  let qNo=1;
+
+  categories.forEach((cat,idx)=>{
+    const sec=document.createElement("section");
+    sec.className="section";
+    sec.dataset.category=cat.key;
+
+    sec.innerHTML=`
+      <div class="section-head">
+        <div class="num">${idx+1}</div>
+        <div>
+          <h2>${cat.title}<span class="eng">${cat.eng}</span></h2>
+          <p class="desc">${cat.desc}</p>
+        </div>
+      </div>`;
+
+    cat.items.forEach(item=>{
+      const n=qNo++;
+      const q=document.createElement("div");
+      q.className="question";
+
+      let opts="";
+      for(let s=1;s<=5;s++){
+        opts += `
+          <div class="option">
+            <input type="radio" name="q${n}" id="q${n}_${s}" value="${s}" data-category="${cat.key}">
+            <label for="q${n}_${s}">
+              <span class="score">${s}</span>
+              <span>${scaleLabels[s-1]}</span>
+            </label>
+          </div>`;
+      }
+
+      q.innerHTML=`
+        <div class="q-title">
+          <span class="q-no">Q${String(n).padStart(2,"0")}</span>
+          <span>${item}</span>
+        </div>
+        <div class="likert">${opts}</div>`;
+
+      sec.appendChild(q);
+    });
+
+    form.appendChild(sec);
+  });
+
+  /* =========================================================
+     진행률
+  ========================================================== */
+  function updateProgress(){
+    const checked=document.querySelectorAll('#surveyForm input[type="radio"]:checked').length;
+    $("progressText").textContent=`${checked} / ${total}`;
+    $("progressFill").style.width=`${Math.round(checked/total*100)}%`;
+  }
+
+  document.addEventListener("change",e=>{
+    if(e.target.matches('#surveyForm input[type="radio"]')) updateProgress();
+  });
+
+  /* =========================================================
+     점수 계산
+  ========================================================== */
+  function collect(){
+    const answers={}, raw={};
+    categories.forEach(c=>raw[c.key]=[]);
+
+    for(let i=1;i<=total;i++){
+      const x=document.querySelector(`input[name="q${i}"]:checked`);
+      if(!x) return null;
+
+      const v=Number(x.value);
+      answers[`Q${String(i).padStart(2,"0")}`]=v;
+      raw[x.dataset.category].push(v);
+    }
+
+    const scores={};
+    Object.entries(raw).forEach(([k,a])=>{
+      const mean=a.reduce((x,y)=>x+y,0)/a.length;
+      scores[k]=Math.round(((mean-1)/4)*100);
+    });
+
+    const vals=Object.values(answers);
+    const mean=vals.reduce((x,y)=>x+y,0)/vals.length;
+
+    return {
+      answers,
+      scores,
+      overallScore:Math.round(((mean-1)/4)*100)
+    };
+  }
+
+  function level(score){
+    if(score<25) return ["LEVEL 1 · AI 탐색","AI의 가능성과 적용영역을 탐색하는 단계"];
+    if(score<50) return ["LEVEL 2 · AI 활용","AI가 실제 업무에 활용되기 시작한 단계"];
+    if(score<75) return ["LEVEL 3 · 업무 전환","AI를 전제로 업무와 역할을 재설계하는 단계"];
+    return ["LEVEL 4 · AX 전환","전략·업무·사람·문화가 AI와 연결되는 단계"];
+  }
+
+  function pattern(s){
+    const m=[];
+    if(s.adoption>=65&&s.redesign<=50) m.push("AI 활용은 활발하지만 <strong>업무 재설계</strong>로 충분히 연결되지 않고 있습니다.");
+    if(s.adoption>=65&&s.performance<=50) m.push("AI 사용은 늘었지만 <strong>조직 성과 전환</strong>이 상대적으로 약합니다.");
+    if(s.strategy>=65&&s.adoption<=50) m.push("방향성에 비해 현업의 <strong>실제 활용 확산</strong>이 과제로 보입니다.");
+    if(s.performance>=65&&s.people<=50) m.push("성과에 비해 <strong>구성원의 역할·역량 전환</strong>을 함께 점검할 필요가 있습니다.");
+    if(s.culture<=50) m.push("AI를 조직 시스템으로 확산하려면 <strong>공유·실험·거버넌스</strong> 강화가 필요합니다.");
+
+    return (m.length ? m : ["6개 영역의 균형을 확인하고 가장 낮은 영역부터 개선 우선순위를 정해보세요."])
+      .slice(0,2).join("<br><br>");
+  }
+
+  function renderParticipant(data){
+    const [lv,desc]=level(data.overallScore);
+
+    $("overallScore").textContent=data.overallScore;
+    $("levelBadge").textContent=lv;
+    $("summaryInsight").innerHTML=`<strong>${lv}</strong><br>${desc}`;
+
+    $("scoreBars").innerHTML=categories.map(c=>`
+      <div class="bar-row">
+        <div class="bar-head"><span>${c.title}</span><strong>${data.scores[c.key]}점</strong></div>
+        <div class="track"><div style="width:${data.scores[c.key]}%"></div></div>
+      </div>`).join("");
+
+    const low=categories
+      .map(c=>({title:c.title,key:c.key,score:data.scores[c.key]}))
+      .sort((a,b)=>a.score-b.score)[0];
+
+    $("bottleneckInsight").innerHTML=
+      `<strong>현재 가장 낮은 영역: ${low.title} (${low.score}점)</strong><br><br>${pattern(data.scores)}`;
+
+    if(participantChart) participantChart.destroy();
+
+    participantChart=new Chart($("radarChart"),{
+      type:"radar",
+      data:{
+        labels:categories.map(c=>c.title),
+        datasets:[{
+          data:categories.map(c=>data.scores[c.key]),
+          borderWidth:2,pointRadius:4,fill:true
+        }]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        scales:{
+          r:{
+            min:0,max:100,
+            ticks:{stepSize:20,backdropColor:"transparent"},
+            grid:{color:"#dfe5ee"},
+            angleLines:{color:"#dfe5ee"},
+            pointLabels:{color:"#39455a",font:{size:12,weight:"700"}}
+          }
+        },
+        plugins:{legend:{display:false}}
+      }
+    });
+
+    $("result").classList.add("show");
+    $("result").scrollIntoView({behavior:"smooth"});
+  }
+
+  async function saveResponse(data){
+    if(!FIREBASE_ENABLED || !db) return false;
+
+    const payload={
+      respondentCode,
+      organization:$("organization").value.trim(),
+      session:$("session").value.trim(),
+      position:$("position").value,
+      answers:data.answers,
+      scores:data.scores,
+      strategyScore:data.scores.strategy,
+      adoptionScore:data.scores.adoption,
+      redesignScore:data.scores.redesign,
+      performanceScore:data.scores.performance,
+      peopleScore:data.scores.people,
+      cultureScore:data.scores.culture,
+      overallScore:data.overallScore,
+      submittedAt:serverTimestampFn(),
+      submittedAtClient:new Date().toISOString()
+    };
+
+    await addDocFn(collectionFn(db,"axResponses"),payload);
+    return true;
+  }
+
+  function showNotice(msg,type){
+    $("notice").className=`notice show ${type}`;
+    $("notice").innerHTML=msg;
+  }
+
+  $("submitBtn").addEventListener("click",async()=>{
+    const data=collect();
+
+    if(!data){
+      let first=null;
+
+      document.querySelectorAll(".section").forEach(sec=>{
+        const names=[...new Set([...sec.querySelectorAll('input[type="radio"]')].map(x=>x.name))];
+        const ok=names.every(n=>document.querySelector(`input[name="${n}"]:checked`));
+
+        sec.classList.toggle("error",!ok);
+        if(!ok&&!first) first=sec;
+      });
+
+      showNotice("아직 응답하지 않은 문항이 있습니다. 표시된 영역을 확인해 주세요.","error");
+      first?.scrollIntoView({behavior:"smooth",block:"center"});
+      return;
+    }
+
+    const b=$("submitBtn");
+    b.disabled=true;
+    b.textContent="결과 계산 중...";
+
+    try{
+      renderParticipant(data);
+
+      if(FIREBASE_ENABLED){
+        await saveResponse(data);
+        showNotice("응답이 저장되었습니다.","ok");
+      }else{
+        showNotice("개인 결과가 계산되었습니다. 현재 Firebase 저장 기능은 비활성화 상태입니다.","ok");
+      }
+    }catch(e){
+      console.error(e);
+      showNotice("개인 결과는 계산되었지만 데이터 저장에 실패했습니다.","error");
+    }finally{
+      b.disabled=false;
+      b.textContent="진단 결과 다시 확인";
+    }
+  });
+
+  /* =========================================================
+     관리자 모드 진입
+  ========================================================== */
+  $("openAdminBtn").addEventListener("click",()=>{
+    $("adminPassword").value="";
+    $("pwStatus").textContent="";
+    $("passwordModal").classList.add("show");
+    setTimeout(()=>$("adminPassword").focus(),100);
+  });
+
+  $("cancelAdminBtn").addEventListener("click",()=>{
+    $("passwordModal").classList.remove("show");
+  });
+
+  async function enterAdmin(){
+    if($("adminPassword").value.trim() !== ADMIN_PASSWORD){
+      $("pwStatus").textContent="비밀번호가 맞지 않습니다.";
+      $("adminPassword").select();
+      return;
+    }
+
+    $("passwordModal").classList.remove("show");
+    $("participantView").classList.add("hidden");
+    $("adminView").classList.remove("hidden");
+    window.scrollTo({top:0,behavior:"smooth"});
+
+    await loadAdminData();
+  }
+
+  $("enterAdminBtn").addEventListener("click",enterAdmin);
+  $("adminPassword").addEventListener("keydown",e=>{
+    if(e.key==="Enter") enterAdmin();
+  });
+
+  $("backToSurveyBtn").addEventListener("click",()=>{
+    $("adminView").classList.add("hidden");
+    $("participantView").classList.remove("hidden");
+    window.scrollTo({top:0,behavior:"smooth"});
+  });
+
+  /* =========================================================
+     관리자 데이터
+  ========================================================== */
+  function safe(v){
+    return (v??"").toString().replace(/[&<>"']/g,m=>({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[m]));
+  }
+
+  function ts(v){
+    if(!v) return "-";
+    try{
+      if(v.toDate) return v.toDate().toLocaleString("ko-KR");
+      return new Date(v).toLocaleString("ko-KR");
+    }catch{
+      return "-";
+    }
+  }
+
+  async function loadAdminData(){
+    if(!FIREBASE_ENABLED || !db){
+      $("adminConnectionInfo").innerHTML=
+        "<strong>Firebase 미연결 상태입니다.</strong> Firebase 설정값을 입력하고 <code>FIREBASE_ENABLED = true</code>로 변경하면 전체 응답 데이터가 표시됩니다.";
+      allRows=[];
+      populateFilters();
+      applyFilters();
+      return;
+    }
+
+    $("adminConnectionInfo").textContent="응답 데이터를 불러오는 중...";
+
+    try{
+      let snap;
+
+      try{
+        snap=await getDocsFn(
+          queryFn(collectionFn(db,"axResponses"),orderByFn("submittedAt","desc"))
+        );
+      }catch{
+        snap=await getDocsFn(collectionFn(db,"axResponses"));
+      }
+
+      allRows=snap.docs.map(d=>({id:d.id,...d.data()}));
+
+      $("adminConnectionInfo").innerHTML=
+        `<strong>Firebase 연결됨.</strong> 총 ${allRows.length}건의 응답 데이터를 불러왔습니다.`;
+
+      populateFilters();
+      applyFilters();
+    }catch(e){
+      console.error(e);
+      $("adminConnectionInfo").innerHTML=
+        "<strong>Firestore 읽기 실패.</strong> Firebase 설정값과 Firestore 읽기 권한을 확인하세요.";
+    }
+  }
+
+  $("refreshBtn").addEventListener("click",loadAdminData);
+
+  function uniq(field){
+    return [...new Set(allRows.map(r=>r[field]).filter(Boolean))]
+      .sort((a,b)=>a.localeCompare(b,"ko"));
+  }
+
+  function fillSelect(id,vals){
+    const s=$(id);
+    const keep=s.value;
+    s.innerHTML='<option value="">전체</option>'+
+      vals.map(v=>`<option>${safe(v)}</option>`).join("");
+    s.value=keep;
+  }
+
+  function populateFilters(){
+    fillSelect("orgFilter",uniq("organization"));
+    fillSelect("sessionFilter",uniq("session"));
+    fillSelect("positionFilter",uniq("position"));
+  }
+
+  ["orgFilter","sessionFilter","positionFilter"].forEach(id=>{
+    $(id).addEventListener("change",applyFilters);
+  });
+
+  $("clearFilterBtn").addEventListener("click",()=>{
+    $("orgFilter").value="";
+    $("sessionFilter").value="";
+    $("positionFilter").value="";
+    applyFilters();
+  });
+
+  function applyFilters(){
+    const o=$("orgFilter").value;
+    const s=$("sessionFilter").value;
+    const p=$("positionFilter").value;
+
+    filtered=allRows.filter(r=>
+      (!o||r.organization===o) &&
+      (!s||r.session===s) &&
+      (!p||r.position===p)
+    );
+
+    renderAdmin();
+  }
+
+  function scoreOf(r,key){
+    if(r.scores && Number.isFinite(Number(r.scores[key]))) return Number(r.scores[key]);
+
+    const flat={
+      strategy:"strategyScore",
+      adoption:"adoptionScore",
+      redesign:"redesignScore",
+      performance:"performanceScore",
+      people:"peopleScore",
+      culture:"cultureScore"
+    }[key];
+
+    return Number(r[flat]??0);
+  }
+
+  function avg(arr){
+    return arr.length
+      ? Math.round(arr.reduce((a,b)=>a+Number(b||0),0)/arr.length)
+      : 0;
+  }
+
+  function renderAdmin(){
+    $("kpiCount").textContent=filtered.length;
+    $("tableCount").textContent=`${filtered.length}명`;
+    $("kpiOverall").textContent=avg(filtered.map(r=>r.overallScore));
+
+    const avgs={};
+    catPairs.forEach(([k])=>{
+      avgs[k]=avg(filtered.map(r=>scoreOf(r,k)));
+    });
+
+    const ranked=catPairs
+      .map(([k,n])=>({k,n,v:avgs[k]}))
+      .sort((a,b)=>b.v-a.v);
+
+    $("kpiHigh").textContent=filtered.length ? ranked[0].n : "-";
+    $("kpiHighSub").textContent=filtered.length ? `${ranked[0].v}점` : "-";
+    $("kpiLow").textContent=filtered.length ? ranked.at(-1).n : "-";
+    $("kpiLowSub").textContent=filtered.length ? `${ranked.at(-1).v}점` : "-";
+
+    $("avgBars").innerHTML=catPairs.map(([k,n])=>`
+      <div class="bar-row">
+        <div class="bar-head"><span>${n}</span><strong>${avgs[k]}점</strong></div>
+        <div class="track"><div style="width:${avgs[k]}%"></div></div>
+      </div>`).join("");
+
+    if(adminChart) adminChart.destroy();
+
+    adminChart=new Chart($("adminRadarChart"),{
+      type:"radar",
+      data:{
+        labels:catPairs.map(x=>x[1]),
+        datasets:[{
+          data:catPairs.map(x=>avgs[x[0]]),
+          borderWidth:2,pointRadius:4,fill:true
+        }]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        scales:{
+          r:{
+            min:0,max:100,
+            ticks:{stepSize:20,backdropColor:"transparent"},
+            grid:{color:"#dfe5ee"},
+            angleLines:{color:"#dfe5ee"},
+            pointLabels:{color:"#39455a",font:{size:12,weight:"700"}}
+          }
+        },
+        plugins:{legend:{display:false}}
+      }
+    });
+
+    $("responseBody").innerHTML=filtered.map((r,i)=>`
+      <tr data-index="${i}">
+        <td><strong>${safe(r.respondentCode||r.id?.slice(0,8)||"-")}</strong></td>
+        <td>${safe(r.organization||"-")}</td>
+        <td>${safe(r.session||"-")}</td>
+        <td>${safe(r.position||"-")}</td>
+        <td><span class="score-pill">${Number(r.overallScore||0)}</span></td>
+        ${catPairs.map(([k])=>`<td>${scoreOf(r,k)}</td>`).join("")}
+        <td>${safe(ts(r.submittedAt||r.submittedAtClient))}</td>
+      </tr>`).join("");
+
+    $("emptyState").classList.toggle("hidden",filtered.length>0);
+
+    document.querySelectorAll("#responseBody tr").forEach(tr=>{
+      tr.addEventListener("click",()=>{
+        openDetail(filtered[Number(tr.dataset.index)]);
+      });
+    });
+  }
+
+  function openDetail(r){
+    $("detailCode").textContent=r.respondentCode||r.id||"-";
+
+    $("detailMeta").innerHTML=[
+      ["기관/기업",r.organization||"-"],
+      ["회차",r.session||"-"],
+      ["직급/역할",r.position||"-"],
+      ["종합점수",`${Number(r.overallScore||0)}점`]
+    ].map(([a,b])=>`
+      <div><small>${a}</small><strong>${safe(b)}</strong></div>
+    `).join("");
+
+    $("detailScores").innerHTML=catPairs.map(([k,n])=>`
+      <div><span>${n}</span><strong>${scoreOf(r,k)}점</strong></div>
+    `).join("");
+
+    const ans=r.answers||{};
+
+    $("detailAnswers").innerHTML=Array.from({length:24},(_,i)=>{
+      const key=`Q${String(i+1).padStart(2,"0")}`;
+      return `<div><span>${key}</span><strong>${safe(ans[key]??"-")}</strong></div>`;
+    }).join("");
+
+    $("detailModal").classList.add("show");
+  }
+
+  $("closeDetailBtn").addEventListener("click",()=>{
+    $("detailModal").classList.remove("show");
+  });
+
+  $("detailModal").addEventListener("click",e=>{
+    if(e.target===$("detailModal")) $("detailModal").classList.remove("show");
+  });
+
+  /* =========================================================
+     CSV 다운로드
+  ========================================================== */
+  $("exportBtn").addEventListener("click",()=>{
+    if(!filtered.length){
+      alert("내보낼 데이터가 없습니다.");
+      return;
+    }
+
+    const headers=[
+      "응답코드","기관","회차","직급","종합","전략","AI활용","업무재설계","성과전환",
+      "사람역량","문화거버넌스",
+      ...Array.from({length:24},(_,i)=>`Q${String(i+1).padStart(2,"0")}`),
+      "제출일시"
+    ];
+
+    const rows=filtered.map(r=>[
+      r.respondentCode||r.id,
+      r.organization||"",
+      r.session||"",
+      r.position||"",
+      r.overallScore||0,
+      ...catPairs.map(([k])=>scoreOf(r,k)),
+      ...Array.from({length:24},(_,i)=>
+        (r.answers||{})[`Q${String(i+1).padStart(2,"0")}`]??""
+      ),
+      ts(r.submittedAt||r.submittedAtClient)
+    ]);
+
+    const csv=[headers,...rows]
+      .map(row=>row.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(","))
+      .join("\n");
+
+    const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
+    const a=document.createElement("a");
+
+    a.href=URL.createObjectURL(blob);
+    a.download=`AX_진단_응답_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+
+    URL.revokeObjectURL(a.href);
+  });
+
+  updateProgress();
+</script>
+</body>
+</html>
