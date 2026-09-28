@@ -292,6 +292,7 @@
       <button id="backToSurveyBtn" class="btn-ghost">진단 페이지로</button>
       <button id="refreshBtn" class="btn-white">새로고침</button>
       <button id="exportBtn" class="btn-white">CSV 내보내기</button>
+      <button id="deleteAllBtn" class="btn-ghost" style="border-color:rgba(255,210,210,.55);color:#ffe1e1;">전체 응답 삭제</button>
     </div>
   </header>
 
@@ -403,7 +404,7 @@
   };
 
   let db=null, addDocFn=null, collectionFn=null, serverTimestampFn=null,
-      getDocsFn=null, queryFn=null, orderByFn=null;
+      getDocsFn=null, queryFn=null, orderByFn=null, deleteDocFn=null;
 
   let participantChart=null, adminChart=null;
   let allRows=[], filtered=[];
@@ -430,6 +431,7 @@
       getDocsFn = fsMod.getDocs;
       queryFn = fsMod.query;
       orderByFn = fsMod.orderBy;
+      deleteDocFn = fsMod.deleteDoc;
 
       return true;
     }catch(e){
@@ -1026,6 +1028,69 @@
 
   $("detailModal").addEventListener("click",e=>{
     if(e.target===$("detailModal")) $("detailModal").classList.remove("show");
+  });
+
+
+  /* =========================================================
+     관리자: 전체 응답 삭제
+  ========================================================== */
+  $("deleteAllBtn").addEventListener("click", async()=>{
+    if(!FIREBASE_ENABLED || !db){
+      alert("Firebase가 연결되어 있지 않습니다.");
+      return;
+    }
+
+    if(!allRows.length){
+      alert("삭제할 응답 데이터가 없습니다.");
+      return;
+    }
+
+    const firstConfirm = confirm(
+      `현재 저장된 응답 ${allRows.length}건을 모두 삭제합니다.\n\n이 작업은 되돌릴 수 없습니다.\n계속하시겠습니까?`
+    );
+    if(!firstConfirm) return;
+
+    const pw = prompt("관리자 비밀번호 1004를 다시 입력하세요.");
+    if(pw !== ADMIN_PASSWORD){
+      alert("비밀번호가 맞지 않아 삭제를 취소했습니다.");
+      return;
+    }
+
+    const finalConfirm = confirm(
+      "정말로 전체 응답 데이터를 삭제하시겠습니까?\n\n삭제 후 복구할 수 없습니다."
+    );
+    if(!finalConfirm) return;
+
+    const btn = $("deleteAllBtn");
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "삭제 중...";
+
+    try{
+      const snap = await getDocsFn(collectionFn(db,"axResponses"));
+
+      await Promise.all(
+        snap.docs.map(docSnap => deleteDocFn(docSnap.ref))
+      );
+
+      allRows = [];
+      filtered = [];
+      populateFilters();
+      applyFilters();
+
+      $("adminConnectionInfo").innerHTML =
+        "<strong>삭제 완료.</strong> 저장된 AX 진단 응답 데이터가 모두 삭제되었습니다.";
+
+      alert("전체 응답 데이터 삭제가 완료되었습니다.");
+    }catch(e){
+      console.error(e);
+      alert(
+        "삭제에 실패했습니다.\n\nFirestore 보안 규칙에서 delete 권한이 허용되어 있는지 확인하세요."
+      );
+    }finally{
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
   });
 
   /* =========================================================
