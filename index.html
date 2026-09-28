@@ -220,23 +220,11 @@
     <div class="meta-grid">
       <div class="field">
         <label for="organization">기관/기업명</label>
-        <input
-  id="organization"
-  name="ax-organization-name"
-  type="text"
-  autocomplete="off"
-  placeholder="예: 굿인사이트"
->
+        <input id="organization" name="ax-organization-name" type="text" autocomplete="off" placeholder="예: 굿인사이트">
       </div>
       <div class="field">
         <label for="session">교육/진단 회차</label>
-        <input
-  id="session"
-  name="ax-session-code"
-  type="text"
-  autocomplete="off"
-  placeholder="예: 2026_AX_01"
->
+        <input id="session" name="ax-session-code" type="text" autocomplete="off" placeholder="예: 2026_AX_01">
       </div>
       <div class="field">
         <label for="position">직급/역할</label>
@@ -403,15 +391,15 @@
   const ADMIN_PASSWORD = "1004";
 
   /* Firebase를 연결할 때 true로 변경 */
-  const FIREBASE_ENABLED = false;
+  const FIREBASE_ENABLED = true;
 
   const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyB8nHbZ74u_3I_yeDZTLSG9YYNQdHtfzMo",
+    authDomain: "ax-diagnostic.firebaseapp.com",
+    projectId: "ax-diagnostic",
+    storageBucket: "ax-diagnostic.firebasestorage.app",
+    messagingSenderId: "559862939093",
+    appId: "1:559862939093:web:2f88880d1b5aed23ec915c"
   };
 
   let db=null, addDocFn=null, collectionFn=null, serverTimestampFn=null,
